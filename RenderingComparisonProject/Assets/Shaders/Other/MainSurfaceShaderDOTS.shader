@@ -2,8 +2,8 @@
 {
 	Properties
 	{
-		_BaseColor("Base Color", Color) = (1,1,1,1)
-		_MainTex("Base Map", 2D) = "white" {}
+		[NoScaleOffset] _MainTex("MainTex", 2D) = "white" {}
+		_MainTex_ST("MainTex_ST", Vector) = (0, 0, 0, 0)
 	}
 		SubShader
 		{
@@ -22,14 +22,17 @@
 				#pragma target 4.5
 				#pragma multi_compile_instancing
 				#pragma multi_compile _ DOTS_INSTANCING_ON
+
 				#pragma vertex vert
 				#pragma fragment frag
+
 				#pragma multi_compile_fog
 				#pragma multi_compile _ _MAIN_LIGHT_SHADOWS
 				#pragma multi_compile _ _ADDITIONAL_LIGHTS
 
 				#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 				#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+
 				#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SurfaceInput.hlsl"
 
 				struct Attributes
@@ -57,20 +60,18 @@
 				};
 
 				CBUFFER_START(UnityPerMaterial)
-					float4 _BaseColor;
+					float4 _MainTex_ST;
 				CBUFFER_END
 
 				#if defined(UNITY_DOTS_INSTANCING_ENABLED)
 					UNITY_DOTS_INSTANCING_START(MaterialPropertyMetadata)
-						UNITY_DOTS_INSTANCED_PROP(float4, _BaseColor)
-						UNITY_DOTS_INSTANCED_PROP(float4, _MainTex)
+						UNITY_DOTS_INSTANCED_PROP(float4, _MainTex_ST)
 					UNITY_DOTS_INSTANCING_END(MaterialPropertyMetadata)
 
-					#define _Color UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float4, _Color)
-					#define _MainTex_ST UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float4, _MainTex)
+					#define _MainTex_ST UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float4, _MainTex_ST)
 				#endif
 
-				TEXTURE2D(_MainTex); SAMPLER(sampler_MainTex);
+				sampler2D _MainTex;
 
 				Varyings vert(Attributes input)
 				{
@@ -113,9 +114,9 @@
 					float3 normal = normalize(input.normalWS);
 					float3 lightDir = normalize(_MainLightPosition.xyz);
 					float3 lightColor = _MainLightColor.rgb;
-
 					float NdotL = saturate(dot(normal, lightDir));
-					float4 baseMap = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, input.uv);
+
+					float4 baseMap = tex2D(_MainTex, input.uv.xy);
 					float3 albedo = baseMap.rgb * input.color.rgb;
 
 					float3 color = albedo * lightColor * NdotL;

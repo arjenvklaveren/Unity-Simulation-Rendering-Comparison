@@ -35,24 +35,11 @@ public partial struct ParticleSpawnerSystem : ISystem
 
             float3 position = new float3(math.sin(angle) * distance, height, math.cos(angle) * distance);
 
-            ecb.AddComponent(newEntity, new ParticleComponent
-            {
-                moveSpeed = 10
-            });
-
+            ecb.AddComponent<ParticleComponent>(newEntity);
             ecb.SetComponent(newEntity, LocalTransform.FromPositionRotationScale(position, quaternion.identity, size));
         }
 
         spawner.ValueRW.hasSpawned = true;
         ecb.Playback(state.EntityManager);
-    }
-
-
-    public partial struct ParticleSpawnJob : IJobFor
-    {
-        public void Execute(int index)
-        {
-            throw new System.NotImplementedException();
-        }
-    }
+    }    
 }

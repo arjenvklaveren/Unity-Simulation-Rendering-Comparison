@@ -32,11 +32,11 @@ public partial struct ParticleSystem : ISystem
         public float deltaTime;
         public float elapsedTime;
 
-        public void Execute(ref LocalTransform transform, ref ParticleComponent particle)
+        public void Execute(ref LocalTransform transform, in ParticleComponent particle)
         {
             float2 inPos2D = new float2(transform.Position.x, transform.Position.z);
             float dist = math.length(inPos2D);
-            
+
             float rotationSpeed = (deltaTime * (105.0f - dist)) * 0.01f;
             float2 outPos2D = rotate2D(inPos2D, rotationSpeed);
 

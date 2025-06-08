@@ -1,99 +1,104 @@
 ﻿Shader "Custom/MainSurfaceShader"
 {
-    Properties{
-        _MainTex("Albedo (RGB)", 2D) = "white" {}
+    Properties
+    {
+        _BaseColor("Base Color", Color) = (1,1,1,1)
+        _MainTex("Base Map", 2D) = "white" {}
     }
-        SubShader{
 
-            Pass {
+        SubShader
+    {
+        Tags { "RenderType" = "Opaque" "RenderPipeline" = "UniversalPipeline" }
+        LOD 100
 
-                Tags {"LightMode" = "ForwardBase"}
+        Pass
+        {
+            Name "ForwardLit"
+            Tags { "LightMode" = "UniversalForward" }
 
-                CGPROGRAM
+            HLSLPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma multi_compile_fog
+            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS
+            #pragma multi_compile _ _ADDITIONAL_LIGHTS
 
-                #pragma vertex vert
-                #pragma fragment frag
-                #pragma multi_compile_fwdbase nolightmap nodirlightmap nodynlightmap novertexlight
-                #pragma target 4.5
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
-                #include "UnityCG.cginc"
-                #include "UnityLightingCommon.cginc"
-                #include "AutoLight.cginc"
+            struct Particle
+            {
+                float4 position;
+            };
+            StructuredBuffer<Particle> particleBuffer;
 
-                sampler2D _MainTex;
+            struct Attributes
+            {
+                float4 positionOS : POSITION;
+                float2 uv : TEXCOORD0;
+                float3 normalOS : NORMAL;
+                uint instanceID : SV_InstanceID;
+            };
 
-                struct Particle 
-                {
-                    float4 position;
-                };
+            struct Varyings
+            {
+                float4 positionHCS : SV_POSITION;
+                float2 uv : TEXCOORD0;
+                float3 normalWS : TEXCOORD1;
+                float3 positionWS : TEXCOORD2;
+                float3 color : TEXCOORD3;
+            };
 
-                StructuredBuffer<Particle> particleBuffer;
+            CBUFFER_START(UnityPerMaterial)
+                float4 _BaseColor;
+            CBUFFER_END
 
-                struct v2f
-                {
-                    float4 pos : SV_POSITION;
-                    float2 uv_MainTex : TEXCOORD0;
-                    float3 ambient : TEXCOORD1;
-                    float3 diffuse : TEXCOORD2;
-                    float3 color : TEXCOORD3;
-                    SHADOW_COORDS(4)
-                };
+            TEXTURE2D(_MainTex); SAMPLER(sampler_MainTex);
 
-                void rotate2D(inout float2 v, float r)
-                {
-                    float s, c;
-                    sincos(r, s, c);
-                    v = float2(v.x * c - v.y * s, v.x * s + v.y * c);
-                }
+            Varyings vert(Attributes input)
+            {
+                Varyings output;
+                float4 bufferPosition = particleBuffer[input.instanceID].position;
+                float3 localPosition = input.positionOS.xyz * bufferPosition.w;
+                float3 worldPosition = bufferPosition + localPosition;
+                float3 posWS = TransformObjectToWorld(input.positionOS);
 
-                v2f vert(appdata_full v, uint instanceID : SV_InstanceID)
-                {
-                    float4 position = particleBuffer[instanceID].position;
+                output.positionHCS = TransformWorldToHClip(worldPosition.xyz);
+                output.positionWS = posWS.xyz;
+                output.normalWS = TransformObjectToWorldNormal(input.normalOS);
+                output.uv = input.uv;
 
-                    float3 localPosition = v.vertex.xyz * position.w;
-                    float3 worldPosition = position + localPosition;
-                    float3 worldNormal = v.normal;
+                float dist = length(worldPosition.xz);
 
-                    float3 ndotl = saturate(dot(worldNormal, _WorldSpaceLightPos0.xyz));
-                    float3 ambient = ShadeSH9(float4(worldNormal, 1.0f));
-                    float3 diffuse = (ndotl * _LightColor0.rgb);
-                    float3 color = v.color;
+                float minDist = 20.0 - 10.0;
+                float maxDist = 100.0 + 30.0;
+                float t = saturate((dist - minDist) / (maxDist - minDist));
 
-                    v2f o;
-                    o.pos = mul(UNITY_MATRIX_VP, float4(worldPosition, 1.0f));
-                    o.uv_MainTex = v.texcoord;
-                    o.ambient = ambient;
-                    o.diffuse = diffuse;
+                float3 k = float3(0.0, 2.094f, 4.188f);
+                float3 rainbow = 0.5 + 0.5 * cos(k - t * 6.28318);
 
-                    float dist = length(worldPosition.xz);
+                float3 heightCol = float3(bufferPosition.y, bufferPosition.y, bufferPosition.y);
 
-                    float minDist = 20.0 - 10.0;
-                    float maxDist = 100.0 + 30.0;
-                    float t = saturate((dist - minDist) / (maxDist - minDist)); 
+                output.color = float4(rainbow + (heightCol * 0.025f), 1.0);
 
-                    float3 k = float3(0.0, 2.094f, 4.188f); 
-                    float3 rainbow = 0.5 + 0.5 * cos(k - t * 6.28318);
-
-                    float3 heightCol = float3(position.y, position.y, position.y);
-
-                    o.color = float4(rainbow + (heightCol * 0.025f), 1.0);
-
-                    TRANSFER_SHADOW(o)
-                    return o;
-                }
-
-                fixed4 frag(v2f i) : SV_Target
-                {
-                    fixed shadow = SHADOW_ATTENUATION(i);
-                    fixed4 albedo = tex2D(_MainTex, i.uv_MainTex);
-                    float3 lighting = i.diffuse * shadow + i.ambient;
-                    fixed4 output = fixed4(albedo.rgb * i.color * lighting, albedo.w);
-                    UNITY_APPLY_FOG(i.fogCoord, output);
-                    //fixed4 output = fixed4(i.color * tex2D(_MainTex, i.uv_MainTex).rgb, 1);
-                    return output;
-                }
-
-                ENDCG
+                return output;
             }
+
+            half4 frag(Varyings input) : SV_Target
+            {
+                float3 normal = normalize(input.normalWS);
+                float3 lightDir = normalize(_MainLightPosition.xyz);
+                float3 lightColor = _MainLightColor.rgb;
+
+                float NdotL = saturate(dot(normal, lightDir));
+                float4 baseMap = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, input.uv);
+                float3 albedo = baseMap.rgb * input.color.rgb;
+
+                float3 color = albedo * lightColor * NdotL;
+
+                return float4(color, 1.0);
+            }
+            ENDHLSL
+        }
     }
 }

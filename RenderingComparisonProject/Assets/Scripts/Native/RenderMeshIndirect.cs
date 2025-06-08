@@ -37,8 +37,6 @@ public class RenderMeshIndirect : MonoBehaviour
         rp.worldBounds = new Bounds(Vector3.zero, 10000 * Vector3.one);
         rp.matProps = new MaterialPropertyBlock();
 
-
-
         Particle[] particles = new Particle[instanceCount];
         for (int i = 0; i < instanceCount; i++)
         {

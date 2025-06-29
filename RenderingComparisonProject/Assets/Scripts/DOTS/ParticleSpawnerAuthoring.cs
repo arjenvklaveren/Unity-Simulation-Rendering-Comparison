@@ -17,8 +17,7 @@ class ParticleSpawnerBaker: Baker<ParticleSpawnerAuthoring>
         {
             prefab = GetEntity(authoring.prefab, TransformUsageFlags.Dynamic),
             spawnAmount = authoring.spawnAmount,
-            hasSpawned = false,
-            random = Unity.Mathematics.Random.CreateFromIndex((uint)Random.Range(1, int.MaxValue))
+            hasSpawned = false
         });
     }
 }

@@ -16,6 +16,8 @@ public class ManageCubeParticlesDefault : MonoBehaviour
 
     void SpawnParticles()
     {
+        Random.InitState(12345);
+
         for (int i = 0; i < spawnAmount; i++)
         {
             float angle = Random.Range(0.0f, Mathf.PI * 2.0f);

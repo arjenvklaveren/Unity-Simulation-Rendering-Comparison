@@ -186,6 +186,7 @@ GameObject:
   - component: {fileID: 566381863}
   - component: {fileID: 566381864}
   - component: {fileID: 566381865}
+  - component: {fileID: 566381866}
   m_Layer: 0
   m_Name: Manager
   m_TagString: Untagged
@@ -215,12 +216,12 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 566381861}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2f1a26bea31bbda4b8c441e49ac30a2c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  instanceCount: 100000
+  instanceCount: 1000000
   material: {fileID: 2100000, guid: 9050710b45025c340af31d261c33769c, type: 2}
   mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
   computeShader: {fileID: 7200000, guid: 9a3d13240cccc09409ff3e76cf7a5651, type: 3}
@@ -238,6 +239,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   spawnAmount: 100000
   prefab: {fileID: 7138719464022648325, guid: e405065e34fb25445a87c346582dc837, type: 3}
+--- !u!114 &566381866
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 566381861}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa76f039c6be95546ae212dbadaa6120, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0

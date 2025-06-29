@@ -10,12 +10,12 @@ public partial struct ParticleSystem : ISystem
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
-        new ParticleMoveJob 
-        { 
-            deltaTime = SystemAPI.Time.DeltaTime, 
-            elapsedTime = (float)SystemAPI.Time.ElapsedTime 
+        state.Dependency = new ParticleMoveJob
+        {
+            deltaTime = SystemAPI.Time.DeltaTime,
+            elapsedTime = (float)SystemAPI.Time.ElapsedTime
         }
-        .ScheduleParallel();
+        .ScheduleParallel(state.Dependency);
     }
 
     [BurstCompile]

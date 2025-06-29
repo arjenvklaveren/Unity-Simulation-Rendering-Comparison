@@ -1,9 +1,9 @@
-using Unity.Entities;
 using Unity.Burst;
-using Unity.Mathematics;
-using Unity.Collections;
-using Unity.Transforms;
+using Unity.Entities;
 using Unity.Jobs;
+using Unity.Mathematics;
+using Unity.Transforms;
+using Unity.Collections;
 
 [BurstCompile]
 public partial struct ParticleSpawnerSystem : ISystem
@@ -18,28 +18,50 @@ public partial struct ParticleSpawnerSystem : ISystem
     {
         Entity spawnerEntity = SystemAPI.GetSingletonEntity<ParticleSpawnerComponent>();
         RefRW<ParticleSpawnerComponent> spawner = SystemAPI.GetComponentRW<ParticleSpawnerComponent>(spawnerEntity);
-        EntityCommandBuffer ecb = new EntityCommandBuffer(Allocator.Temp);
 
         if (spawner.ValueRO.hasSpawned) return;
 
-        var random = spawner.ValueRW.random;
+        var prefab = spawner.ValueRO.prefab;
+        int spawnAmount = spawner.ValueRO.spawnAmount;
 
-        for(int i = 0; i < spawner.ValueRO.spawnAmount; i++)
+        var ecbSystem = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+        var ecb = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+
+        state.Dependency = new ParticleSpawnJob
         {
-            Entity newEntity = ecb.Instantiate(spawner.ValueRO.prefab);
+            prefab = prefab,
+            baseSeed = 123456u,
+            ecb = ecb
+        }.ScheduleParallel(spawnAmount, 64, state.Dependency);
 
-            float angle = random.NextFloat(0.0f, math.PI2);
-            float distance = random.NextFloat(20.0f, 100.0f);
-            float height = random.NextFloat(-2.0f, 2.0f);
-            float size = random.NextFloat(0.05f, 0.25f);
-
-            float3 position = new float3(math.sin(angle) * distance, height, math.cos(angle) * distance);
-
-            ecb.AddComponent<ParticleComponent>(newEntity);
-            ecb.SetComponent(newEntity, LocalTransform.FromPositionRotationScale(position, quaternion.identity, size));
-        }
 
         spawner.ValueRW.hasSpawned = true;
-        ecb.Playback(state.EntityManager);
-    }    
+    }
+
+    [BurstCompile]
+    public partial struct ParticleSpawnJob : IJobFor
+    {
+        public Entity prefab;
+        public uint baseSeed;
+        public EntityCommandBuffer.ParallelWriter ecb;
+
+        public void Execute(int index)
+        {
+            // Use the same random instance with different seeds
+            var rand = new Random(math.hash(new uint2(baseSeed, (uint)index)));
+
+            Entity newEntity = ecb.Instantiate(index, prefab);
+
+            float angle = rand.NextFloat(0f, math.PI * 2f);
+            float distance = rand.NextFloat(20f, 100f);
+            float height = rand.NextFloat(-2f, 2f);
+            float size = rand.NextFloat(0.05f, 0.25f);
+
+            float3 position = new float3(math.sin(angle) * distance, height, math.cos(angle) * distance);
+            var transform = LocalTransform.FromPositionRotationScale(position, quaternion.identity, size);
+
+            ecb.AddComponent(index, newEntity, new ParticleComponent());
+            ecb.SetComponent(index, newEntity, transform);
+        }
+    }
 }
